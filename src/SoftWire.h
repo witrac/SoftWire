@@ -1,11 +1,10 @@
 #ifndef SOFTWIRE_H
 #define SOFTWIRE_H
 
-#define SOFTWIRE_VERSION "2.0.0"
+#define SOFTWIRE_VERSION "2.1.0"
 
 #include <Arduino.h>
 #include <stdint.h>
-#include <AsyncDelay.h>
 
 class SoftWire : public Stream {
 public:
@@ -82,7 +81,7 @@ public:
 	inline void sdaHigh(void) const;
 	inline void sclLow(void) const;
 	inline void sclHigh(void) const;
-	inline bool sclHighAndStretch(AsyncDelay& timeout) const;
+	inline bool sclHighAndStretch(const uint32_t start, const uint16_t timeout) const;
 
 
     // Setters to override functions which control the SDA and SCL pins
@@ -323,21 +322,6 @@ void SoftWire::sclLow(void) const
 void SoftWire::sclHigh(void) const
 {
 	_sclHigh(this);
-}
-
-bool SoftWire::sclHighAndStretch(AsyncDelay& timeout) const
-{
-	_sclHigh(this);
-
-	// Wait for SCL to actually become high in case the slave keeps
-	// it low (clock stretching).
-	while (_readScl(this) == LOW)
-		if (timeout.isExpired()) {
-			stop(); // Reset bus
-			return false;
-		}
-
-	return true;
 }
 
 #endif

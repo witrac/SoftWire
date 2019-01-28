@@ -10,6 +10,11 @@
 
 #include <SoftWire.h>
 
+
+inline static uint32_t getTimeSpan(const uint32_t startTime, const uint32_t endTime){
+	return (uint32_t)((int32_t)endTime - (int32_t)startTime);
+}
+
 inline static uint8_t digitalReadFast ( const uint8_t pin ) {
 	const uint8_t bit = digitalPinToBitMask( pin );
 	const uint8_t port = digitalPinToPort( pin );
@@ -152,7 +157,7 @@ void SoftWire::begin(void) const
 
 SoftWire::result_t SoftWire::stop(void) const
 {
-	AsyncDelay timeout(_timeout_ms, AsyncDelay::MILLIS);
+	const uint32_t start = millis();
 
 	// Force SCL low
 	_sclLow(this);
@@ -163,7 +168,7 @@ SoftWire::result_t SoftWire::stop(void) const
 	delayMicroseconds(_delay_us);
 
 	// Release SCL
-	if (!sclHighAndStretch(timeout))
+	if (!sclHighAndStretch(start, _timeout_ms))
 		return timedOut;
 	delayMicroseconds(_delay_us);
 
@@ -190,7 +195,7 @@ SoftWire::result_t SoftWire::llStart(uint8_t rawAddr) const
 
 SoftWire::result_t SoftWire::llRepeatedStart(uint8_t rawAddr) const
 {
-	AsyncDelay timeout(_timeout_ms, AsyncDelay::MILLIS);
+	const uint32_t start = millis();
 
 	// Force SCL low
 	_sclLow(this);
@@ -201,7 +206,7 @@ SoftWire::result_t SoftWire::llRepeatedStart(uint8_t rawAddr) const
 	delayMicroseconds(_delay_us);
 
 	// Release SCL
-	if (!sclHighAndStretch(timeout))
+	if (!sclHighAndStretch(start, _timeout_ms))
 		return timedOut;
 	delayMicroseconds(_delay_us);
 
@@ -215,9 +220,9 @@ SoftWire::result_t SoftWire::llRepeatedStart(uint8_t rawAddr) const
 
 SoftWire::result_t SoftWire::llStartWait(uint8_t rawAddr) const
 {
-	AsyncDelay timeout(_timeout_ms, AsyncDelay::MILLIS);
 
-	while (!timeout.isExpired()) {
+	const uint32_t start = millis();
+	while (getTimeSpan(start, millis()) < _timeout_ms) {
 		// Force SDA low
 		_sdaLow(this);
 		delayMicroseconds(_delay_us);
@@ -239,7 +244,7 @@ SoftWire::result_t SoftWire::llStartWait(uint8_t rawAddr) const
 
 SoftWire::result_t SoftWire::llWrite(uint8_t data) const
 {
-	AsyncDelay timeout(_timeout_ms, AsyncDelay::MILLIS);
+	const uint32_t start = millis();
 	for (uint8_t i = 8; i; --i) {
 		// Force SCL low
 		_sclLow(this);
@@ -255,13 +260,13 @@ SoftWire::result_t SoftWire::llWrite(uint8_t data) const
 		delayMicroseconds(_delay_us);
 
 		// Release SCL
-		if (!sclHighAndStretch(timeout))
+		if (!sclHighAndStretch(start, _timeout_ms))
 			return timedOut;
 
 		delayMicroseconds(_delay_us);
 
 		data <<= 1;
-		if (timeout.isExpired()) {
+		if (getTimeSpan(start, millis()) > _timeout_ms) {
 			stop(); // Reset bus
 			return timedOut;
 		}
@@ -277,7 +282,7 @@ SoftWire::result_t SoftWire::llWrite(uint8_t data) const
 	delayMicroseconds(_delay_us);
 
 	// Release SCL
-	if (!sclHighAndStretch(timeout))
+	if (!sclHighAndStretch(start, _timeout_ms))
 		return timedOut;
 
 	result_t res = (_readSda(this) == LOW ? ack : nack);
@@ -294,7 +299,7 @@ SoftWire::result_t SoftWire::llWrite(uint8_t data) const
 SoftWire::result_t SoftWire::llRead(uint8_t &data, bool sendAck) const
 {
 	data = 0;
-	AsyncDelay timeout(_timeout_ms, AsyncDelay::MILLIS);
+	const uint32_t start = millis();
 
 	for (uint8_t i = 8; i; --i) {
 		data <<= 1;
@@ -307,13 +312,13 @@ SoftWire::result_t SoftWire::llRead(uint8_t &data, bool sendAck) const
 		delayMicroseconds(_delay_us);
 
 		// Release SCL
-		if (!sclHighAndStretch(timeout))
+		if (!sclHighAndStretch(start, _timeout_ms))
 			return timedOut;
 		delayMicroseconds(_delay_us);
 
 		// Read clock stretch
 		while (_readScl(this) == LOW)
-			if (timeout.isExpired()) {
+			if (getTimeSpan(start, millis()) > _timeout_ms) {
 				stop(); // Reset bus
 				return timedOut;
 			}
@@ -339,13 +344,13 @@ SoftWire::result_t SoftWire::llRead(uint8_t &data, bool sendAck) const
 	delayMicroseconds(_delay_us);
 
 	// Release SCL
-	if (!sclHighAndStretch(timeout))
+	if (!sclHighAndStretch(start, _timeout_ms))
 		return timedOut;
 	delayMicroseconds(_delay_us);
 
 	// Wait for SCL to return high
 	while (_readScl(this) == LOW)
-		if (timeout.isExpired()) {
+		if (getTimeSpan(start, millis()) > _timeout_ms) {
 			stop(); // Reset bus
 			return timedOut;
 		}
@@ -485,4 +490,19 @@ uint8_t SoftWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendSto
         stop();
 
     return _rxBufferBytesRead;
+}
+
+bool SoftWire::sclHighAndStretch(const uint32_t start, const uint16_t timeout) const
+{
+	_sclHigh(this);
+
+	// Wait for SCL to actually become high in case the slave keeps
+	// it low (clock stretching).
+	while (_readScl(this) == LOW)
+		if (getTimeSpan(start, millis()) > timeout) {
+			stop(); // Reset bus
+			return false;
+		}
+
+	return true;
 }
