@@ -10,6 +10,33 @@
 
 #include <SoftWire.h>
 
+inline static uint8_t digitalReadFast ( const uint8_t pin ) {
+	const uint8_t bit = digitalPinToBitMask( pin );
+	const uint8_t port = digitalPinToPort( pin );
+	if ( *portInputRegister( port ) & bit ) {
+		return HIGH;
+	}
+	else {
+		return LOW;
+	}	
+}
+
+inline static void digitalWriteFast ( const uint8_t pin, const uint8_t mode ) {
+	*portOutputRegister( digitalPinToPort( pin ) ) = mode;	
+}
+
+inline static void pinModeFast (const uint8_t pin, const uint8_t mode) {
+
+	const uint8_t bit = digitalPinToBitMask(pin);
+	const uint8_t port = digitalPinToPort(pin);
+	volatile uint8_t *reg;
+	reg = portModeRegister(port);
+	if (mode == INPUT) {
+		*reg &= ~bit;
+	}else {
+		*reg |= bit;
+	}	
+}
 
 // Force SDA low
 void SoftWire::sdaLow(const SoftWire *p)
@@ -20,8 +47,8 @@ void SoftWire::sdaLow(const SoftWire *p)
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 #endif
 	{
-		digitalWrite(sda, LOW);
-		pinMode(sda, OUTPUT);
+		digitalWriteFast( sda, LOW );
+		pinModeFast ( sda, OUTPUT );
 	}
 }
 
@@ -29,7 +56,7 @@ void SoftWire::sdaLow(const SoftWire *p)
 // Release SDA to float high
 void SoftWire::sdaHigh(const SoftWire *p)
 {
-	pinMode(p->getSda(), p->getInputMode());
+	pinModeFast ( p->getSda(), p->getInputMode() );
 }
 
 
@@ -42,8 +69,8 @@ void SoftWire::sclLow(const SoftWire *p)
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 #endif
 	{
-		digitalWrite(scl, LOW);
-		pinMode(scl, OUTPUT);
+		digitalWriteFast( scl, LOW );
+		pinModeFast ( scl, OUTPUT );
 	}
 }
 
@@ -51,21 +78,21 @@ void SoftWire::sclLow(const SoftWire *p)
 // Release SCL to float high
 void SoftWire::sclHigh(const SoftWire *p)
 {
-	pinMode(p->getScl(), p->getInputMode());
+	pinModeFast ( p->getScl(), p->getInputMode() );
 }
 
 
 // Read SDA (for data read)
 uint8_t SoftWire::readSda(const SoftWire *p)
 {
-	return digitalRead(p->getSda());
+	return digitalReadFast( p->getSda() );
 }
 
 
 // Read SCL (to detect clock-stretching)
 uint8_t SoftWire::readScl(const SoftWire *p)
 {
-	return digitalRead(p->getScl());
+	return digitalReadFast( p->getScl() );
 }
 
 
@@ -459,5 +486,3 @@ uint8_t SoftWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendSto
 
     return _rxBufferBytesRead;
 }
-
-
