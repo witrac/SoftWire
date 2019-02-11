@@ -1,5 +1,4 @@
 #include <SoftWire.h>
-#include <AsyncDelay.h>
 
 SoftWire sw(SDA, SCL);
 
