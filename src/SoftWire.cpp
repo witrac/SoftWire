@@ -27,7 +27,7 @@ inline static uint8_t digitalReadFast ( const uint8_t pin ) {
 }
 
 inline static void digitalWriteFast ( const uint8_t pin, const uint8_t mode ) {
-	*portOutputRegister( digitalPinToPort( pin ) ) = mode;	
+	digitalWrite( pin, mode );
 }
 
 inline static void pinModeFast (const uint8_t pin, const uint8_t mode) {
