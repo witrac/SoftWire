@@ -23,11 +23,19 @@ inline static uint8_t digitalReadFast ( const uint8_t pin ) {
 	}
 	else {
 		return LOW;
-	}	
+	}
 }
 
 inline static void digitalWriteFast ( const uint8_t pin, const uint8_t mode ) {
-	digitalWrite( pin, mode );
+	const uint8_t bit = digitalPinToBitMask( pin );
+	const uint8_t port = digitalPinToPort( pin );
+	volatile uint8_t *reg = portOutputRegister( port );
+	if (mode == HIGH) {
+		*reg |= pin;
+	}
+	else {
+		*reg &= ~pin;
+	}
 }
 
 inline static void pinModeFast (const uint8_t pin, const uint8_t mode) {
@@ -40,7 +48,7 @@ inline static void pinModeFast (const uint8_t pin, const uint8_t mode) {
 		*reg &= ~bit;
 	}else {
 		*reg |= bit;
-	}	
+	}
 }
 
 // Force SDA low
