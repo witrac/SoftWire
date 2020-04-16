@@ -31,10 +31,10 @@ inline static void digitalWriteFast ( const uint8_t pin, const uint8_t mode ) {
 	const uint8_t port = digitalPinToPort( pin );
 	volatile uint8_t *reg = portOutputRegister( port );
 	if (mode == HIGH) {
-		*reg |= pin;
+		*reg |= bit;
 	}
 	else {
-		*reg &= ~pin;
+		*reg &= ~bit;
 	}
 }
 
@@ -42,8 +42,7 @@ inline static void pinModeFast (const uint8_t pin, const uint8_t mode) {
 
 	const uint8_t bit = digitalPinToBitMask(pin);
 	const uint8_t port = digitalPinToPort(pin);
-	volatile uint8_t *reg;
-	reg = portModeRegister(port);
+	volatile uint8_t *reg = portModeRegister(port);
 	if (mode == INPUT) {
 		*reg &= ~bit;
 	}else {
